@@ -329,6 +329,18 @@ else:
             
             st.altair_chart(chart_yoy, use_container_width=True)
             
+            # Executive insights to fill empty space and add deep business analysis value
+            st.markdown("""
+                <div style="background-color: #F3F4F6; border-radius: 12px; padding: 20px; border-left: 5px solid #3B82F6; margin-top: 15px;">
+                    <h4 style="margin-top: 0; color: #1E3A8A; font-family: 'Prompt', sans-serif; font-size: 16px;">💡 บทวิเคราะห์และข้อเสนอแนะเชิงบริหาร (Q1 Executive Key Insights)</h4>
+                    <ul style="margin-bottom: 0; font-size: 13.5px; line-height: 1.6; color: #374151; font-family: 'Prompt', sans-serif; padding-left: 20px;">
+                        <li><b>การเติบโตอย่างก้าวกระโดด (YoY Growth)</b>: ยอดขายจริงสะสม Q1 ปี 2026 เพิ่มขึ้นถึง <b>+19.23%</b> (คิดเป็นเงินที่เพิ่มขึ้น <b>+฿1,255,108.30</b>) เมื่อเทียบกับปีก่อน สะท้อนว่าความต้องการตลาดยางพาราในประเทศฟื้นตัวอย่างแข็งแกร่งมาก</li>
+                        <li><b>ปริมาณและธุรกรรมเสถียร (Volume & Trx)</b>: ปริมาณชิ้นสินค้าเติบโตขึ้นเป็น <b>388,416 ชิ้น</b> (โตขึ้น <b>+10.5%</b>) ควบคู่กับจำนวนบิลเพิ่มขึ้นเป็น <b>2,294 บิล</b> ชี้ให้เห็นถึงความเสถียรและความถี่ของฐานลูกค้าในการสั่งซื้อที่ต่อเนื่องขึ้น</li>
+                        <li><b>ทิศทางและเป้าหมาย (Annual Outlook)</b>: เมื่อพิจารณา Run-Rate ยอดขายปี 2026 คาดว่าจะจบที่ <b>฿37.10 ล้านบาท</b> ซึ่งจะทะลุเป้าหมายที่บริษัทวางไว้ 35 ล้านบาท ถือเป็นสัญญาณบวกในการขยายกำลังการผลิตต่อในไตรมาสถัดไป</li>
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+            
         with col_chart_right:
             st.markdown("### 🎯 เปรียบเทียบสัดส่วนยอดขายและปริมาณสินค้า")
             
@@ -373,14 +385,18 @@ else:
             if diff_q1 >= 0:
                 st.success(
                     f"🎉 **มีแนวโน้มยอดขายปี 2026 ทะลุเป้าหมาย 35,000,000 บาท!**\n\n"
-                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} สูงกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **+{pct_reached_q1 - 100:.2f}%** (+฿{diff_q1:,.2f})\n"
-                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะทะลุเป้าหมายปี 2026 อยู่ **+{pct_reached_annual - 100:.2f}%** (+฿{diff_annual:,.2f})"
+                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f}  \n"
+                    f"  *(สูงกว่าเป้าหมายเฉลี่ยรายฤดูกาล ฿{prorated_q1_target:,.2f} อยู่ **+{pct_reached_q1 - 100:.2f}%** หรือคิดเป็น **+฿{diff_q1:,.2f}**)*\n"
+                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f}  \n"
+                    f"  *(คาดว่าจะทะลุเป้าหมายปี 2026 อยู่ **+{pct_reached_annual - 100:.2f}%** หรือคิดเป็น **+฿{diff_annual:,.2f}**)*"
                 )
             else:
                 st.warning(
                     f"⚠️ **ยอดขายปี 2026 ยังต่ำกว่าเกณฑ์เป้าหมายรายปี 35,000,000 บาท**\n\n"
-                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} ต่ำกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **{pct_reached_q1:.2f}%** (ขาดอีก ฿{abs(diff_q1):,.2f})\n"
-                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะยังไม่ถึงเป้าหมายปี 2026 (คิดเป็น {pct_reached_annual:.2f}%)"
+                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f}  \n"
+                    f"  *(ต่ำกว่าเป้าหมายเฉลี่ยรายฤดูกาล ฿{prorated_q1_target:,.2f} อยู่ **{pct_reached_q1:.2f}%** หรือขาดอีก **฿{abs(diff_q1):,.2f}**)*\n"
+                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f}  \n"
+                    f"  *(คาดว่าจะยังไม่ถึงเป้าหมายปี 2026 คิดเป็น **{pct_reached_annual:.2f}%**)*"
                 )
             
         # 3. Top 5 Customers & Products Section
@@ -415,7 +431,7 @@ else:
                 use_container_width=True,
                 hide_index=True,
                 on_select="rerun",
-                selection_mode="single_row"
+                selection_mode="single-row"
             )
             
         with col_top_prod:

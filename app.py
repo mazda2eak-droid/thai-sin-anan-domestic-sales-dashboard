@@ -313,12 +313,12 @@ else:
             monthly_sales['YearStr'] = monthly_sales['Year'].astype(str)
             
             chart_yoy = alt.Chart(monthly_sales).mark_bar().encode(
-                x=alt.X('MonthTH:N', title='เดือน', sort=alt.SortField('MonthNum')),
+                x=alt.X('MonthTH:N', title='เดือน', sort=alt.SortField('MonthNum'), axis=alt.Axis(labelAngle=0)),
                 y=alt.Y('NetSales:Q', title='ยอดขายสุทธิ (บาท)'),
                 color=alt.Color('YearStr:N', title='ปี ค.ศ.', scale=alt.Scale(domain=['2025', '2026'], range=['#3B82F6', '#10B981'])),
                 xOffset='YearStr:N'
             ).properties(
-                height=350
+                height=280
             ).configure_axis(
                 labelFont='Prompt',
                 titleFont='Prompt'
@@ -335,12 +335,12 @@ else:
             # Show summary table for Q1
             q1_summary = pd.DataFrame({
                 'หัวข้อ': ['ยอดขายรวม Q1', 'จำนวนชิ้นที่ขาย Q1', 'จำนวนบิลที่เปิด Q1'],
-                'ปี 2025 (2568)': [
+                'ปี 2025\xa0(2568)': [
                     f"฿{q1_2025_sales:,.2f}", 
                     f"{df[(df['Year'] == 2025) & (df['MonthNum'].isin([1,2,3]))]['Qty'].sum():,.0f} ชิ้น",
                     f"{df[(df['Year'] == 2025) & (df['MonthNum'].isin([1,2,3]))]['DocNo'].nunique():,.0f} บิล"
                 ],
-                'ปี 2026 (2569)': [
+                'ปี 2026\xa0(2569)': [
                     f"฿{q1_2026_sales:,.2f}",
                     f"{df[(df['Year'] == 2026) & (df['MonthNum'].isin([1,2,3]))]['Qty'].sum():,.0f} ชิ้น",
                     f"{df[(df['Year'] == 2026) & (df['MonthNum'].isin([1,2,3]))]['DocNo'].nunique():,.0f} บิล"
@@ -350,7 +350,7 @@ else:
             st.dataframe(q1_summary, use_container_width=True, hide_index=True)
             
             # Executive Budget / Target Tracker
-            st.markdown("### 🎯 2026 Sales Target & Budget Tracker")
+            st.markdown("### 🎯 ติดตามเป้าหมายและงบประมาณยอดขายปี 2026")
             annual_target = 35000000.0  # 35,000,000 THB Full Year Budget
             
             # Prorated Q1 target based on 2025 seasonality
@@ -372,13 +372,13 @@ else:
             
             if diff_q1 >= 0:
                 st.success(
-                    f"🎉 **On Track to Exceed Annual Target of 35,000,000 THB!**\n\n"
+                    f"🎉 **มีแนวโน้มยอดขายปี 2026 ทะลุเป้าหมาย 35,000,000 บาท!**\n\n"
                     f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} สูงกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **+{pct_reached_q1 - 100:.2f}%** (+฿{diff_q1:,.2f})\n"
                     f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะทะลุเป้าหมายปี 2026 อยู่ **+{pct_reached_annual - 100:.2f}%** (+฿{diff_annual:,.2f})"
                 )
             else:
                 st.warning(
-                    f"⚠️ **Below Target Track for Annual Target of 35,000,000 THB**\n\n"
+                    f"⚠️ **ยอดขายปี 2026 ยังต่ำกว่าเกณฑ์เป้าหมายรายปี 35,000,000 บาท**\n\n"
                     f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} ต่ำกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **{pct_reached_q1:.2f}%** (ขาดอีก ฿{abs(diff_q1):,.2f})\n"
                     f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะยังไม่ถึงเป้าหมายปี 2026 (คิดเป็น {pct_reached_annual:.2f}%)"
                 )
@@ -409,31 +409,54 @@ else:
                 columns={'CustomerCode': 'รหัสลูกค้า', 'CustomerName': 'ชื่อลูกค้า'}
             )
             
-            st.dataframe(display_cust_df, use_container_width=True, hide_index=True)
-            
-        with col_top_prod:
-            st.markdown(f"### 📦 Top 5 สินค้าขายดีที่สุด {filter_status_suffix}")
-            
-            # Top 5 products aggregation
-            top_prod_df = filtered_df.groupby(['ProductCode', 'ProductName'])['NetSales'].sum().reset_index()
-            top_prod_df = top_prod_df.sort_values(by='NetSales', ascending=False).head(5)
-            
-            chart_prod = alt.Chart(top_prod_df).mark_bar(cornerRadiusEnd=4, color='#10B981').encode(
-                x=alt.X('NetSales:Q', title='ยอดขายรวม (บาท)'),
-                y=alt.Y('ProductName:N', sort='-x', title='ชื่อสินค้า'),
-                color=alt.Color('NetSales:Q', scale=alt.Scale(scheme='greens'), legend=None)
-            ).properties(height=280)
-            
-            st.altair_chart(chart_prod, use_container_width=True)
-            
-            # Bulletproof Pandas string formatting for perfect rendering of commas and currency
-            display_prod_df = top_prod_df.copy()
-            display_prod_df['ยอดขายรวมสุทธิ'] = display_prod_df['NetSales'].apply(lambda x: f"฿{x:,.2f}")
-            display_prod_df = display_prod_df[['ProductCode', 'ProductName', 'ยอดขายรวมสุทธิ']].rename(
-                columns={'ProductCode': 'รหัสสินค้า', 'ProductName': 'ชื่อสินค้า'}
+            st.markdown("💡 *คุณสามารถคลิกเลือกรายชื่อลูกค้าในตารางนี้ เพื่อแสดงสินค้าขายดี 5 อันดับแรกของลูกค้ารายนั้นในตารางขวาได้ทันที:*")
+            cust_selection = st.dataframe(
+                display_cust_df,
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single_row"
             )
             
-            st.dataframe(display_prod_df, use_container_width=True, hide_index=True)
+        with col_top_prod:
+            # Check if a customer is selected in the left table
+            selected_customer_name = None
+            if cust_selection and hasattr(cust_selection, "selection") and "rows" in cust_selection.selection and len(cust_selection.selection["rows"]) > 0:
+                selected_row_idx = cust_selection.selection["rows"][0]
+                if selected_row_idx < len(top_cust_df):
+                    selected_customer_name = top_cust_df.iloc[selected_row_idx]['CustomerName']
+            
+            if selected_customer_name:
+                st.markdown(f"### 📦 สินค้าขายดี 5 อันดับแรกของ '{selected_customer_name}'")
+                # Filter for selected customer
+                cust_filter_df = filtered_df[filtered_df['CustomerName'] == selected_customer_name]
+                top_prod_df = cust_filter_df.groupby(['ProductCode', 'ProductName'])['NetSales'].sum().reset_index()
+                top_prod_df = top_prod_df.sort_values(by='NetSales', ascending=False).head(5)
+            else:
+                st.markdown(f"### 📦 Top 5 สินค้าขายดีที่สุด {filter_status_suffix}")
+                # Default: Top 5 products of all customers
+                top_prod_df = filtered_df.groupby(['ProductCode', 'ProductName'])['NetSales'].sum().reset_index()
+                top_prod_df = top_prod_df.sort_values(by='NetSales', ascending=False).head(5)
+            
+            if not top_prod_df.empty:
+                chart_prod = alt.Chart(top_prod_df).mark_bar(cornerRadiusEnd=4, color='#10B981').encode(
+                    x=alt.X('NetSales:Q', title='ยอดขายรวม (บาท)'),
+                    y=alt.Y('ProductName:N', sort='-x', title='ชื่อสินค้า'),
+                    color=alt.Color('NetSales:Q', scale=alt.Scale(scheme='greens'), legend=None)
+                ).properties(height=280)
+                
+                st.altair_chart(chart_prod, use_container_width=True)
+                
+                # Bulletproof Pandas string formatting for perfect rendering of commas and currency
+                display_prod_df = top_prod_df.copy()
+                display_prod_df['ยอดขายรวมสุทธิ'] = display_prod_df['NetSales'].apply(lambda x: f"฿{x:,.2f}")
+                display_prod_df = display_prod_df[['ProductCode', 'ProductName', 'ยอดขายรวมสุทธิ']].rename(
+                    columns={'ProductCode': 'รหัสสินค้า', 'ProductName': 'ชื่อสินค้า'}
+                )
+                
+                st.dataframe(display_prod_df, use_container_width=True, hide_index=True)
+            else:
+                st.info("ไม่มีข้อมูลสินค้าขายดีสำหรับลูกค้ารายนี้ในตัวกรองปัจจุบัน")
 
     # -------------------------------------------------------------
     # TAB 2: CUSTOMER DEEP DIVE

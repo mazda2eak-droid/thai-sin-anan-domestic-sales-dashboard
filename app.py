@@ -157,6 +157,13 @@ def load_data():
 # Load the parsed dataset
 df = load_data()
 
+# Global month ordering list to guarantee correct calendar display in Altair
+month_order = [
+    "มกราคม (Jan)", "กุมภาพันธ์ (Feb)", "มีนาคม (Mar)", "เมษายน (Apr)",
+    "พฤษภาคม (May)", "มิถุนายน (Jun)", "กรกฎาคม (Jul)", "สิงหาคม (Aug)",
+    "กันยายน (Sep)", "ตุลาคม (Oct)", "พฤศจิกายน (Nov)", "ธันวาคม (Dec)"
+]
+
 if df.empty:
     st.error("ไม่พบข้อมูลยอดขายสุทธิ กรุณาตรวจสอบว่ามีไฟล์ 'all_sales_data.csv' หรือไม่")
 else:
@@ -361,7 +368,7 @@ else:
             monthly_sales['YearStr'] = monthly_sales['Year'].astype(str)
             
             chart_yoy = alt.Chart(monthly_sales).mark_bar().encode(
-                x=alt.X('MonthTH:N', title='เดือน', sort=alt.SortField('MonthNum'), axis=alt.Axis(labelAngle=0)),
+                x=alt.X('MonthTH:N', title='เดือน', sort=month_order, axis=alt.Axis(labelAngle=0)),
                 y=alt.Y('NetSales:Q', title='ยอดขายสุทธิ (บาท)'),
                 color=alt.Color('YearStr:N', title='ปี ค.ศ.', scale=alt.Scale(domain=['2025', '2026'], range=['#3B82F6', '#10B981'])),
                 xOffset='YearStr:N'
@@ -645,7 +652,7 @@ else:
             cust_yoy['YearStr'] = cust_yoy['Year'].astype(str)
             
             chart_cust_yoy = alt.Chart(cust_yoy).mark_bar().encode(
-                x=alt.X('MonthTH:N', title='เดือน', sort=alt.SortField('MonthNum')),
+                x=alt.X('MonthTH:N', title='เดือน', sort=month_order),
                 y=alt.Y('NetSales:Q', title='ยอดซื้อ (บาท)'),
                 color=alt.Color('YearStr:N', title='ปี ค.ศ.', scale=alt.Scale(domain=['2025', '2026'], range=['#8B5CF6', '#10B981'])),
                 xOffset='YearStr:N'

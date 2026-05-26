@@ -658,58 +658,221 @@ else:
     # TAB 3: PRODUCT & PRICES
     # -------------------------------------------------------------
     with tab_products:
-        st.markdown("### 📦 ข้อมูลราคาสินค้าและการกระจายตัวของราคาต่อหน่วย (Product Pricing Analysis)")
+        st.markdown("### 📦 ค้นหาและวิเคราะห์ราคาสินค้าแยกรายลูกค้า (Dual-Search Pricing Lookup)")
+        st.markdown("ระบบวิเคราะห์ราคาต่อหน่วยแยกตามรายลูกค้าและรายสินค้า เพื่อตรวจสอบระดับราคาซื้อขายจริง ประวัติการซื้อ และส่วนลดที่ลูกค้าได้รับ")
         
-        # Product selector to check pricing details
-        all_products = sorted(df['ProductName'].dropna().unique())
-        selected_prod = st.selectbox("เลือกสินค้าเพื่อดูรายละเอียดประวัติการขายและระดับราคาต่อหน่วย:", options=all_products)
+        # Dual-search layout: Column 1 for Customer, Column 2 for Product
+        col_search_left, col_search_right = st.columns(2)
         
-        if selected_prod:
-            prod_df = df[df['ProductName'] == selected_prod]
-            
-            prod_code = prod_df['ProductCode'].iloc[0] if not prod_df.empty else ""
-            prod_sales_total = prod_df['NetSales'].sum()
-            prod_qty_total = prod_df['Qty'].sum()
-            
-            # Pricing info
-            min_price = prod_df['UnitPrice'].min()
-            max_price = prod_df['UnitPrice'].max()
-            avg_price = prod_df['UnitPrice'].mean()
-            
-            cp1, cp2, cp3, cp4 = st.columns(4)
-            with cp1:
-                st.metric("รหัสสินค้า & ชื่อสินค้า", f"{prod_code}", f"{selected_prod}")
-            with cp2:
-                st.metric("ราคาขายต่อหน่วยเฉลี่ย", f"฿{avg_price:,.2f}", f"ราคาระหว่าง: ฿{min_price:,.2f} - ฿{max_price:,.2f}")
-            with cp3:
-                st.metric("ปริมาณชิ้นที่ขายสะสม", f"{prod_qty_total:,.0f} ชิ้น")
-            with cp4:
-                st.metric("ยอดขายสุทธิรวมสะสม", f"฿{prod_sales_total:,.2f}")
-                
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Show list of customers who bought this product and at what unit price
-            st.markdown("#### 👥 รายชื่อลูกค้าและประวัติราคาต่อหน่วยที่ขายได้ (แยกรายบิล)")
-            
-            # Top buyers of this product
-            prod_buyers = prod_df.groupby(['CustomerCode', 'CustomerName', 'UnitPrice']).agg({
-                'Qty': 'sum',
-                'NetSales': 'sum'
-            }).reset_index().sort_values(by='NetSales', ascending=False)
-            
-            # Pre-format values in Pandas to bypass st.column_config bug with Thai headers
-            display_buyers = prod_buyers.copy()
-            display_buyers['ราคาขายต่อหน่วย'] = display_buyers['UnitPrice'].apply(lambda x: f"฿{x:,.2f}" if pd.notnull(x) else "")
-            display_buyers['จำนวนชิ้นที่ซื้อ'] = display_buyers['Qty'].apply(lambda x: f"{x:,.0f}" if pd.notnull(x) else "")
-            display_buyers['ยอดซื้อสุทธิรวม'] = display_buyers['NetSales'].apply(lambda x: f"฿{x:,.2f}" if pd.notnull(x) else "")
-            
-            display_buyers = display_buyers[['CustomerCode', 'CustomerName', 'ราคาขายต่อหน่วย', 'จำนวนชิ้นที่ซื้อ', 'ยอดซื้อสุทธิรวม']].rename(
-                columns={'CustomerCode': 'รหัสลูกค้า', 'CustomerName': 'ชื่อลูกค้า'}
+        with col_search_left:
+            all_customers_pricing = sorted(df['CustomerName'].dropna().unique())
+            selected_cust_pricing = st.selectbox(
+                "👤 ส่วนที่ 1: ค้นหาด้วยชื่อลูกค้า (Customer Name)",
+                options=["-- เลือกลูกค้าทั้งหมด --"] + all_customers_pricing,
+                key="pricing_cust_select"
             )
             
+        with col_search_right:
+            # Filter product options dynamically based on the selected customer
+            if selected_cust_pricing != "-- เลือกลูกค้าทั้งหมด --":
+                cust_prods = sorted(df[df['CustomerName'] == selected_cust_pricing]['ProductName'].dropna().unique())
+                show_all_checkbox = st.checkbox("แสดงสินค้าทั้งหมดของโรงงาน (แม้ลูกค้ายังไม่เคยซื้อ)", value=False)
+                if show_all_checkbox:
+                    prods_options = sorted(df['ProductName'].dropna().unique())
+                else:
+                    prods_options = cust_prods
+            else:
+                prods_options = sorted(df['ProductName'].dropna().unique())
+                
+            selected_prod_pricing = st.selectbox(
+                "📦 ส่วนที่ 2: ค้นหาด้วยสินค้า (Product Name)",
+                options=["-- เลือกสินค้า --"] + prods_options,
+                key="pricing_prod_select"
+            )
+            
+        st.markdown("<hr>", unsafe_allow_html=True)
+        
+        # Handle the four pricing lookup scenarios based on selection:
+        if selected_cust_pricing != "-- เลือกลูกค้าทั้งหมด --" and selected_prod_pricing != "-- เลือกสินค้า --":
+            # Case A: Specific Customer + Specific Product selected
+            cust_prod_df = df[(df['CustomerName'] == selected_cust_pricing) & (df['ProductName'] == selected_prod_pricing)]
+            
+            # General factory-wide statistics for the same product to compare
+            factory_prod_df = df[df['ProductName'] == selected_prod_pricing]
+            factory_avg = factory_prod_df['UnitPrice'].mean() if not factory_prod_df.empty else 0.0
+            
+            if not cust_prod_df.empty:
+                prod_code = cust_prod_df['ProductCode'].iloc[0]
+                min_p = cust_prod_df['UnitPrice'].min()
+                max_p = cust_prod_df['UnitPrice'].max()
+                avg_p = cust_prod_df['UnitPrice'].mean()
+                total_qty = cust_prod_df['Qty'].sum()
+                total_sales = cust_prod_df['NetSales'].sum()
+                
+                # Display metrics
+                st.markdown(f"#### 📊 ข้อมูลราคาซื้อขายจริงของ **{selected_cust_pricing}** กับสินค้า **{selected_prod_pricing}**")
+                
+                m1, m2, m3, m4 = st.columns(4)
+                with m1:
+                    st.metric("ราคาเฉลี่ยที่ซื้อจริง", f"฿{avg_p:,.2f}", f"ต่ำสุด ฿{min_p:,.2f} - สูงสุด ฿{max_p:,.2f}")
+                with m2:
+                    st.metric("ราคาเฉลี่ยโรงงานทั้งหมด", f"฿{factory_avg:,.2f}", 
+                              delta=f"ประหยัดกว่าเฉลี่ย ฿{factory_avg - avg_p:,.2f}" if factory_avg > avg_p else f"สูงกว่าเฉลี่ย ฿{avg_p - factory_avg:,.2f}",
+                              delta_color="normal" if factory_avg != avg_p else "off")
+                with m3:
+                    st.metric("ปริมาณที่ซื้อสะสมรวม", f"{total_qty:,.0f} ชิ้น", f"รหัสสินค้า: {prod_code}")
+                with m4:
+                    st.metric("ยอดซื้อสุทธิสะสมรวม", f"฿{total_sales:,.2f}")
+                    
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("#### 📑 ประวัติการออกบิลและการซื้อขายรายรายการ (Transaction History)")
+                
+                # Detailed invoice table
+                display_trx = cust_prod_df.copy().sort_values(by='ParsedDate', ascending=False)
+                display_trx['วันที่'] = display_trx['Date']
+                display_trx['เลขที่เอกสาร'] = display_trx['DocNo']
+                display_trx['จำนวนชิ้น'] = display_trx['Qty'].apply(lambda x: f"{x:,.0f}")
+                display_trx['ราคาต่อหน่วย'] = display_trx['UnitPrice'].apply(lambda x: f"฿{x:,.2f}")
+                display_trx['ยอดซื้อสุทธิ'] = display_trx['NetSales'].apply(lambda x: f"฿{x:,.2f}")
+                display_trx['เลขอ้างอิง'] = display_trx['Ref'].fillna("-")
+                
+                display_cols = ['วันที่', 'เลขที่เอกสาร', 'จำนวนชิ้น', 'ราคาต่อหน่วย', 'ยอดซื้อสุทธิ', 'เลขอ้างอิง']
+                st.dataframe(display_trx[display_cols], use_container_width=True, hide_index=True)
+            else:
+                st.warning(f"⚠️ ลูกค้า **'{selected_cust_pricing}'** ยังไม่เคยซื้อสินค้า **'{selected_prod_pricing}'** ในฐานข้อมูล")
+                st.info(f"💡 ราคาเฉลี่ยของสินค้าชิ้นนี้ในภาพรวมโรงงานคือ **฿{factory_avg:,.2f}** (จากลูกค้าท่านอื่นที่เคยซื้อ)")
+                
+        elif selected_cust_pricing != "-- เลือกลูกค้าทั้งหมด --" and selected_prod_pricing == "-- เลือกสินค้า --":
+            # Case B: Specific Customer selected BUT No Product selected
+            st.markdown(f"#### 📊 สรุปรายการสินค้าและระดับราคาที่ลูกค้า **{selected_cust_pricing}** เคยสั่งซื้อทั้งหมด")
+            
+            cust_all_df = df[df['CustomerName'] == selected_cust_pricing]
+            
+            if not cust_all_df.empty:
+                cust_code = cust_all_df['CustomerCode'].iloc[0]
+                total_cust_sales = cust_all_df['NetSales'].sum()
+                total_cust_qty = cust_all_df['Qty'].sum()
+                unique_prods_count = cust_all_df['ProductName'].nunique()
+                
+                # Metrics
+                mc1, mc2, mc3 = st.columns(3)
+                with mc1:
+                    st.metric("รหัสลูกค้า & ชื่อลูกค้า", f"{cust_code}", f"{selected_cust_pricing}")
+                with mc2:
+                    st.metric("ยอดซื้อสะสมทั้งหมด", f"฿{total_cust_sales:,.2f}", f"จำนวนสินค้า: {total_cust_qty:,.0f} ชิ้น")
+                with mc3:
+                    st.metric("จำนวนชนิดสินค้าที่ซื้อ", f"{unique_prods_count} ชนิดสินค้า")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("#### 📦 ตารางสรุปราคาสินค้าแต่ละชนิดที่เคยซื้อ")
+                
+                # Summarize products purchased by this customer
+                prod_summary = cust_all_df.groupby(['ProductCode', 'ProductName']).agg({
+                    'UnitPrice': ['min', 'max', 'mean'],
+                    'Qty': 'sum',
+                    'NetSales': 'sum'
+                }).reset_index()
+                
+                # Flatten multiindex columns and store raw numeric values
+                prod_summary.columns = ['ProductCode', 'ProductName', 'min_p', 'max_p', 'avg_p', 'total_qty', 'total_sales']
+                prod_summary = prod_summary.sort_values(by='total_sales', ascending=False)
+                
+                # Format to strings in pandas
+                prod_summary['ราคาต่ำสุด'] = prod_summary['min_p'].apply(lambda x: f"฿{x:,.2f}")
+                prod_summary['ราคาสูงสุด'] = prod_summary['max_p'].apply(lambda x: f"฿{x:,.2f}")
+                prod_summary['ราคาเฉลี่ย'] = prod_summary['avg_p'].apply(lambda x: f"฿{x:,.2f}")
+                prod_summary['จำนวนชิ้นรวม'] = prod_summary['total_qty'].apply(lambda x: f"{x:,.0f}")
+                prod_summary['ยอดซื้อสุทธิรวม'] = prod_summary['total_sales'].apply(lambda x: f"฿{x:,.2f}")
+                
+                display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'ราคาเฉลี่ย', 'จำนวนชิ้นรวม', 'ยอดซื้อสุทธิรวม']
+                st.dataframe(
+                    prod_summary[display_cols].rename(columns={
+                        'ProductCode': 'รหัสสินค้า',
+                        'ProductName': 'ชื่อสินค้า'
+                    }),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("ไม่มีข้อมูลการซื้อขายสำหรับลูกค้ารายนี้")
+                
+        elif selected_cust_pricing == "-- เลือกลูกค้าทั้งหมด --" and selected_prod_pricing != "-- เลือกสินค้า --":
+            # Case C: All Customers selected BUT Specific Product selected
+            st.markdown(f"#### 📊 สรุปประวัติการขายและระดับราคาตลาดรวมของสินค้า **{selected_prod_pricing}**")
+            
+            prod_df = df[df['ProductName'] == selected_prod_pricing]
+            
+            if not prod_df.empty:
+                prod_code = prod_df['ProductCode'].iloc[0]
+                prod_sales_total = prod_df['NetSales'].sum()
+                prod_qty_total = prod_df['Qty'].sum()
+                
+                # Pricing info
+                min_price = prod_df['UnitPrice'].min()
+                max_price = prod_df['UnitPrice'].max()
+                avg_price = prod_df['UnitPrice'].mean()
+                unique_buyers = prod_df['CustomerName'].nunique()
+                
+                cp1, cp2, cp3, cp4 = st.columns(4)
+                with cp1:
+                    st.metric("รหัสสินค้า & ชื่อสินค้า", f"{prod_code}", f"{selected_prod_pricing}")
+                with cp2:
+                    st.metric("ราคาขายต่อหน่วยเฉลี่ยรวม", f"฿{avg_price:,.2f}", f"ราคาระหว่าง: ฿{min_price:,.2f} - ฿{max_price:,.2f}")
+                with cp3:
+                    st.metric("ปริมาณชิ้นที่ขายสะสมรวม", f"{prod_qty_total:,.0f} ชิ้น", f"จำนวนลูกค้าที่เคยซื้อ: {unique_buyers} ราย")
+                with cp4:
+                    st.metric("ยอดขายสุทธิรวมสะสม", f"฿{prod_sales_total:,.2f}")
+                    
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("#### 👥 รายชื่อลูกค้าและระดับราคาต่อหน่วยที่แต่ละรายเคยซื้อ")
+                
+                # Top buyers of this product
+                prod_buyers = prod_df.groupby(['CustomerCode', 'CustomerName', 'UnitPrice']).agg({
+                    'Qty': 'sum',
+                    'NetSales': 'sum'
+                }).reset_index().sort_values(by='NetSales', ascending=False)
+                
+                # Format
+                display_buyers = prod_buyers.copy()
+                display_buyers['ราคาขายต่อหน่วย'] = display_buyers['UnitPrice'].apply(lambda x: f"฿{x:,.2f}")
+                display_buyers['จำนวนชิ้นที่ซื้อ'] = display_buyers['Qty'].apply(lambda x: f"{x:,.0f}")
+                display_buyers['ยอดซื้อสุทธิรวม'] = display_buyers['NetSales'].apply(lambda x: f"฿{x:,.2f}")
+                
+                display_buyers = display_buyers[['CustomerCode', 'CustomerName', 'ราคาขายต่อหน่วย', 'จำนวนชิ้นที่ซื้อ', 'ยอดซื้อสุทธิรวม']].rename(
+                    columns={'CustomerCode': 'รหัสลูกค้า', 'CustomerName': 'ชื่อลูกค้า'}
+                )
+                
+                st.dataframe(display_buyers, use_container_width=True, hide_index=True)
+            else:
+                st.info("ไม่มีข้อมูลยอดขายสำหรับสินค้าชนิดนี้")
+                
+        else:
+            # Case D: No selections made
+            st.info("💡 กรุณาเลือกชื่อลูกค้าใน **ส่วนที่ 1** หรือเลือกชื่อสินค้าใน **ส่วนที่ 2** ด้านบนเพื่อเริ่มต้นสืบค้นประวัติราคาต่อหน่วย")
+            
+            # Renders a premium summary of all products sold
+            st.markdown("#### 📈 ภาพรวมสินค้าที่มียอดขายสูงสุดของโรงงาน")
+            top_all_prods = df.groupby(['ProductCode', 'ProductName']).agg({
+                'UnitPrice': ['min', 'max', 'mean'],
+                'Qty': 'sum',
+                'NetSales': 'sum'
+            }).reset_index()
+            top_all_prods.columns = ['ProductCode', 'ProductName', 'min_p', 'max_p', 'avg_p', 'total_qty', 'total_sales']
+            top_all_prods = top_all_prods.sort_values(by='total_sales', ascending=False).head(10)
+            
+            top_all_prods['ราคาต่ำสุด'] = top_all_prods['min_p'].apply(lambda x: f"฿{x:,.2f}")
+            top_all_prods['ราคาสูงสุด'] = top_all_prods['max_p'].apply(lambda x: f"฿{x:,.2f}")
+            top_all_prods['ราคาเฉลี่ย'] = top_all_prods['avg_p'].apply(lambda x: f"฿{x:,.2f}")
+            top_all_prods['จำนวนชิ้นรวม'] = top_all_prods['total_qty'].apply(lambda x: f"{x:,.0f}")
+            top_all_prods['ยอดรวมสุทธิ'] = top_all_prods['total_sales'].apply(lambda x: f"฿{x:,.2f}")
+            
+            display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'ราคาเฉลี่ย', 'จำนวนชิ้นรวม', 'ยอดรวมสุทธิ']
             st.dataframe(
-                display_buyers, 
-                use_container_width=True, 
+                top_all_prods[display_cols].rename(columns={
+                    'ProductCode': 'รหัสสินค้า',
+                    'ProductName': 'ชื่อสินค้า'
+                }),
+                use_container_width=True,
                 hide_index=True
             )
 

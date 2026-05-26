@@ -245,13 +245,20 @@ else:
     # -------------------------------------------------------------
     with tab_overview:
         # 1. Metric Calculations (Dynamic based on active sidebar month/year filters)
-        # Sales and Qty for selected months in 2025
-        sales_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]['NetSales'].sum()
-        qty_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]['Qty'].sum()
+        # Determine the months that actually have data in both years to perform a fair comparison
+        # 2026 has data for months 1, 2, 3. 2025 has data for months 1-12.
+        # Therefore, for like-for-like comparison, we intersect selected_months with [1, 2, 3]
+        common_months = [m for m in selected_months if m in [1, 2, 3]]
+        if not common_months:
+            common_months = [1, 2, 3] # default fallback
+            
+        # 2025 comparable period sales and quantity
+        sales_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(common_months))]['NetSales'].sum()
+        qty_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(common_months))]['Qty'].sum()
         
-        # Sales and Qty for selected months in 2026
-        sales_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]['NetSales'].sum()
-        qty_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]['Qty'].sum()
+        # 2026 selected period sales and quantity (only has data for common_months anyway)
+        sales_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(common_months))]['NetSales'].sum()
+        qty_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(common_months))]['Qty'].sum()
         
         # Growth YoY for the selected period
         yoy_growth_selected = 0.0
@@ -267,9 +274,9 @@ else:
         full_sales_2025 = df[df['Year'] == 2025]['NetSales'].sum()
         
         # Seasonality ratio of the selected months in 2025
-        seasonality_ratio_selected = sales_2025_selected / full_sales_2025 if full_sales_2025 > 0 else (len(selected_months) / 12.0)
+        seasonality_ratio_selected = sales_2025_selected / full_sales_2025 if full_sales_2025 > 0 else (len(common_months) / 12.0)
         if seasonality_ratio_selected == 0:
-            seasonality_ratio_selected = len(selected_months) / 12.0
+            seasonality_ratio_selected = len(common_months) / 12.0
             
         projected_2026_selected = sales_2026_selected / seasonality_ratio_selected if seasonality_ratio_selected > 0 else sales_2026_selected
         projected_increase_selected = projected_2026_selected - full_sales_2025
@@ -282,9 +289,9 @@ else:
         with col1:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #6366F1;">
-                    <div class="metric-title">ยอดขายปี 2025 (2568) (ช่วงที่เลือก)</div>
+                    <div class="metric-title">ยอดขายปี 2025 (2568) (เทียบช่วงเดียวกัน)</div>
                     <div class="metric-value">฿{sales_2025_selected:,.2f}</div>
-                    <div class="metric-delta delta-positive">ปริมาณรวม: {qty_2025_selected:,.0f} ชิ้น ({len(selected_months)} เดือน)</div>
+                    <div class="metric-delta delta-positive">ปริมาณรวม: {qty_2025_selected:,.0f} ชิ้น ({len(common_months)} เดือน)</div>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -300,13 +307,14 @@ else:
         with col3:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #8B5CF6;">
-                    <div class="metric-title">อัตราเติบโตสะสม YoY (ช่วงที่เลือก)</div>
+                    <div class="metric-title">อัตราเติบโตสะสม YoY (เทียบช่วงเดียวกัน)</div>
                     <div class="metric-value">{growth_prefix}{yoy_growth_selected:.2f}%</div>
                     <div class="metric-delta {growth_class}">
                         {diff_prefix}฿{diff_selected:,.2f} (เทียบกับปี 2568 ช่วงเดียวกัน)
                     </div>
                 </div>
             """, unsafe_allow_html=True)
+            
             
         with col4:
             st.markdown(f"""
@@ -372,16 +380,21 @@ else:
         with col_chart_right:
             st.markdown("### 🎯 เปรียบเทียบสัดส่วนยอดขายและปริมาณสินค้า")
             
-            # Calculate values dynamically based on selected months for the summary table
-            sel_2025_df = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]
+            # Calculate values dynamically based on selected months that actually have data in both years for the summary table
+            common_months = [m for m in selected_months if m in [1, 2, 3]]
+            if not common_months:
+                common_months = [1, 2, 3] # default fallback
+                
+            sel_2025_df = df[(df['Year'] == 2025) & (df['MonthNum'].isin(common_months))]
             sel_2025_sales = sel_2025_df['NetSales'].sum()
             sel_2025_qty = sel_2025_df['Qty'].sum()
             sel_2025_bills = sel_2025_df['DocNo'].nunique()
             
-            sel_2026_df = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]
+            sel_2026_df = df[(df['Year'] == 2026) & (df['MonthNum'].isin(common_months))]
             sel_2026_sales = sel_2026_df['NetSales'].sum()
             sel_2026_qty = sel_2026_df['Qty'].sum()
             sel_2026_bills = sel_2026_df['DocNo'].nunique()
+            
             
             # Create a premium HTML table with larger font sizes for maximum readability
             html_table = f"""

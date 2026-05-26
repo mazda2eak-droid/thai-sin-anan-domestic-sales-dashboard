@@ -665,14 +665,25 @@ else:
         col_search_left, col_search_right = st.columns(2)
         
         with col_search_left:
+            st.markdown("##### 👤 ส่วนที่ 1: ค้นหาด้วยชื่อลูกค้า (Customer)")
+            search_cust_text = st.text_input("🔍 พิมพ์ค้นหาลูกค้า (ระบุคำบางส่วน):", placeholder="ตัวอย่าง: ทีวายเค, ชินซัง...", key="search_cust_input")
+            
             all_customers_pricing = sorted(df['CustomerName'].dropna().unique())
+            if search_cust_text:
+                filtered_custs = [c for c in all_customers_pricing if search_cust_text.strip().lower() in c.lower()]
+            else:
+                filtered_custs = all_customers_pricing
+                
             selected_cust_pricing = st.selectbox(
-                "👤 ส่วนที่ 1: ค้นหาด้วยชื่อลูกค้า (Customer Name)",
-                options=["-- เลือกลูกค้าทั้งหมด --"] + all_customers_pricing,
+                "เลือกรายชื่อลูกค้าที่กรองได้ (หรือกดเลือกทั้งหมด):",
+                options=["-- เลือกลูกค้าทั้งหมด --"] + filtered_custs,
                 key="pricing_cust_select"
             )
             
         with col_search_right:
+            st.markdown("##### 📦 ส่วนที่ 2: ค้นหาด้วยสินค้า (Product)")
+            search_prod_text = st.text_input("🔍 พิมพ์ค้นหาสินค้า (ระบุคำบางส่วน):", placeholder="ตัวอย่าง: V-BELT, SD25...", key="search_prod_input")
+            
             # Filter product options dynamically based on the selected customer
             if selected_cust_pricing != "-- เลือกลูกค้าทั้งหมด --":
                 cust_prods = sorted(df[df['CustomerName'] == selected_cust_pricing]['ProductName'].dropna().unique())
@@ -684,9 +695,14 @@ else:
             else:
                 prods_options = sorted(df['ProductName'].dropna().unique())
                 
+            if search_prod_text:
+                filtered_prods = [p for p in prods_options if search_prod_text.strip().lower() in p.lower()]
+            else:
+                filtered_prods = prods_options
+                
             selected_prod_pricing = st.selectbox(
-                "📦 ส่วนที่ 2: ค้นหาด้วยสินค้า (Product Name)",
-                options=["-- เลือกสินค้า --"] + prods_options,
+                "เลือกรายชื่อสินค้าที่กรองได้:",
+                options=["-- เลือกสินค้า --"] + filtered_prods,
                 key="pricing_prod_select"
             )
             

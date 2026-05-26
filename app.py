@@ -630,11 +630,10 @@ else:
                 # Format to strings in pandas to guarantee perfect Baht and comma display
                 cust_price_table['ราคาต่ำสุด'] = cust_price_table['ราคาต่ำสุด_raw'].apply(lambda x: f"฿{x:,.2f}")
                 cust_price_table['ราคาสูงสุด'] = cust_price_table['ราคาสูงสุด_raw'].apply(lambda x: f"฿{x:,.2f}")
-                cust_price_table['ราคาเฉลี่ย'] = cust_price_table['ราคาเฉลี่ย_raw'].apply(lambda x: f"฿{x:,.2f}")
                 cust_price_table['จำนวนชิ้นรวม'] = cust_price_table['จำนวนชิ้นรวม_raw'].apply(lambda x: f"{x:,.0f}")
                 cust_price_table['ยอดซื้อรวม'] = cust_price_table['ยอดซื้อรวม_raw'].apply(lambda x: f"฿{x:,.2f}")
                 
-                display_cols = ['รหัสสินค้า', 'ชื่อสินค้า', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'ราคาเฉลี่ย', 'จำนวนชิ้นรวม', 'ยอดซื้อรวม']
+                display_cols = ['รหัสสินค้า', 'ชื่อสินค้า', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'จำนวนชิ้นรวม', 'ยอดซื้อรวม']
                 st.write("ตารางแสดงรายการสินค้า 10 ลำดับแรกและระดับราคาต่อหน่วยที่ได้รับ:")
                 st.dataframe(cust_price_table[display_cols], use_container_width=True, hide_index=True)
                 
@@ -665,25 +664,14 @@ else:
         col_search_left, col_search_right = st.columns(2)
         
         with col_search_left:
-            st.markdown("##### 👤 ส่วนที่ 1: ค้นหาด้วยชื่อลูกค้า (Customer)")
-            search_cust_text = st.text_input("🔍 พิมพ์ค้นหาลูกค้า (ระบุคำบางส่วน):", placeholder="ตัวอย่าง: ทีวายเค, ชินซัง...", key="search_cust_input")
-            
             all_customers_pricing = sorted(df['CustomerName'].dropna().unique())
-            if search_cust_text:
-                filtered_custs = [c for c in all_customers_pricing if search_cust_text.strip().lower() in c.lower()]
-            else:
-                filtered_custs = all_customers_pricing
-                
             selected_cust_pricing = st.selectbox(
-                "เลือกรายชื่อลูกค้าที่กรองได้ (หรือกดเลือกทั้งหมด):",
-                options=["-- เลือกลูกค้าทั้งหมด --"] + filtered_custs,
+                "👤 ส่วนที่ 1: ค้นหาด้วยชื่อลูกค้า (Customer Name)",
+                options=["-- เลือกลูกค้าทั้งหมด --"] + all_customers_pricing,
                 key="pricing_cust_select"
             )
             
         with col_search_right:
-            st.markdown("##### 📦 ส่วนที่ 2: ค้นหาด้วยสินค้า (Product)")
-            search_prod_text = st.text_input("🔍 พิมพ์ค้นหาสินค้า (ระบุคำบางส่วน):", placeholder="ตัวอย่าง: V-BELT, SD25...", key="search_prod_input")
-            
             # Filter product options dynamically based on the selected customer
             if selected_cust_pricing != "-- เลือกลูกค้าทั้งหมด --":
                 cust_prods = sorted(df[df['CustomerName'] == selected_cust_pricing]['ProductName'].dropna().unique())
@@ -695,14 +683,9 @@ else:
             else:
                 prods_options = sorted(df['ProductName'].dropna().unique())
                 
-            if search_prod_text:
-                filtered_prods = [p for p in prods_options if search_prod_text.strip().lower() in p.lower()]
-            else:
-                filtered_prods = prods_options
-                
             selected_prod_pricing = st.selectbox(
-                "เลือกรายชื่อสินค้าที่กรองได้:",
-                options=["-- เลือกสินค้า --"] + filtered_prods,
+                "📦 ส่วนที่ 2: ค้นหาด้วยสินค้า (Product Name)",
+                options=["-- เลือกสินค้า --"] + prods_options,
                 key="pricing_prod_select"
             )
             
@@ -796,11 +779,10 @@ else:
                 # Format to strings in pandas
                 prod_summary['ราคาต่ำสุด'] = prod_summary['min_p'].apply(lambda x: f"฿{x:,.2f}")
                 prod_summary['ราคาสูงสุด'] = prod_summary['max_p'].apply(lambda x: f"฿{x:,.2f}")
-                prod_summary['ราคาเฉลี่ย'] = prod_summary['avg_p'].apply(lambda x: f"฿{x:,.2f}")
                 prod_summary['จำนวนชิ้นรวม'] = prod_summary['total_qty'].apply(lambda x: f"{x:,.0f}")
                 prod_summary['ยอดซื้อสุทธิรวม'] = prod_summary['total_sales'].apply(lambda x: f"฿{x:,.2f}")
                 
-                display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'ราคาเฉลี่ย', 'จำนวนชิ้นรวม', 'ยอดซื้อสุทธิรวม']
+                display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'จำนวนชิ้นรวม', 'ยอดซื้อสุทธิรวม']
                 st.dataframe(
                     prod_summary[display_cols].rename(columns={
                         'ProductCode': 'รหัสสินค้า',
@@ -878,11 +860,10 @@ else:
             
             top_all_prods['ราคาต่ำสุด'] = top_all_prods['min_p'].apply(lambda x: f"฿{x:,.2f}")
             top_all_prods['ราคาสูงสุด'] = top_all_prods['max_p'].apply(lambda x: f"฿{x:,.2f}")
-            top_all_prods['ราคาเฉลี่ย'] = top_all_prods['avg_p'].apply(lambda x: f"฿{x:,.2f}")
             top_all_prods['จำนวนชิ้นรวม'] = top_all_prods['total_qty'].apply(lambda x: f"{x:,.0f}")
             top_all_prods['ยอดรวมสุทธิ'] = top_all_prods['total_sales'].apply(lambda x: f"฿{x:,.2f}")
             
-            display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'ราคาเฉลี่ย', 'จำนวนชิ้นรวม', 'ยอดรวมสุทธิ']
+            display_cols = ['ProductCode', 'ProductName', 'ราคาต่ำสุด', 'ราคาสูงสุด', 'จำนวนชิ้นรวม', 'ยอดรวมสุทธิ']
             st.dataframe(
                 top_all_prods[display_cols].rename(columns={
                     'ProductCode': 'รหัสสินค้า',

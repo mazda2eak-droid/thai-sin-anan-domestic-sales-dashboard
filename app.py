@@ -222,41 +222,37 @@ else:
     # TAB 1: OVERVIEW
     # -------------------------------------------------------------
     with tab_overview:
-        # 1. Metric Calculations
-        # 2025 sales
-        sales_2025 = df[df['Year'] == 2025]['NetSales'].sum()
-        qty_2025 = df[df['Year'] == 2025]['Qty'].sum()
+        # 1. Metric Calculations (Dynamic based on active sidebar month/year filters)
+        # Sales and Qty for selected months in 2025
+        sales_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]['NetSales'].sum()
+        qty_2025_selected = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]['Qty'].sum()
         
-        # 2026 sales
-        sales_2026 = df[df['Year'] == 2026]['NetSales'].sum()
-        qty_2026 = df[df['Year'] == 2026]['Qty'].sum()
+        # Sales and Qty for selected months in 2026
+        sales_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]['NetSales'].sum()
+        qty_2026_selected = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]['Qty'].sum()
         
-        # YoY Q1 Comparison (Jan, Feb, Mar)
-        q1_2025_sales = df[(df['Year'] == 2025) & (df['MonthNum'].isin([1, 2, 3]))]['NetSales'].sum()
-        q1_2026_sales = df[(df['Year'] == 2026) & (df['MonthNum'].isin([1, 2, 3]))]['NetSales'].sum()
-        
-        q1_yoy_growth = 0.0
-        if q1_2025_sales > 0:
-            q1_yoy_growth = ((q1_2026_sales - q1_2025_sales) / q1_2025_sales) * 100
+        # Growth YoY for the selected period
+        yoy_growth_selected = 0.0
+        if sales_2025_selected > 0:
+            yoy_growth_selected = ((sales_2026_selected - sales_2025_selected) / sales_2025_selected) * 100
             
-        # Overall numbers
-        total_customers = df['CustomerCode'].nunique()
-        total_products = df['ProductCode'].nunique()
+        diff_selected = sales_2026_selected - sales_2025_selected
+        growth_class = "delta-positive" if yoy_growth_selected >= 0 else "delta-negative"
+        growth_prefix = "+" if yoy_growth_selected >= 0 else ""
+        diff_prefix = "+" if diff_selected >= 0 else ""
         
-        # Calculation for Executive Metrics
-        # YTD YoY comparison (Card 3)
-        q1_diff = q1_2026_sales - q1_2025_sales
-        growth_class = "delta-positive" if q1_yoy_growth >= 0 else "delta-negative"
-        growth_prefix = "+" if q1_yoy_growth >= 0 else ""
-        diff_prefix = "+" if q1_diff >= 0 else ""
-
-        # Card 4: Seasonality-Adjusted run-rate projection (highly professional executive metric)
-        # Based on 2025 seasonality where Q1 represented (q1_2025_sales / sales_2025) of the full year
-        seasonality_ratio = q1_2025_sales / sales_2025 if sales_2025 > 0 else 0.25
-        projected_2026 = sales_2026 / seasonality_ratio if seasonality_ratio > 0 else sales_2026 * 4
-        projected_increase = projected_2026 - sales_2025
-        proj_prefix = "+" if projected_increase >= 0 else ""
-        proj_class = "delta-positive" if projected_increase >= 0 else "delta-negative"
+        # Full year 2025 sales for run-rate calculation reference
+        full_sales_2025 = df[df['Year'] == 2025]['NetSales'].sum()
+        
+        # Seasonality ratio of the selected months in 2025
+        seasonality_ratio_selected = sales_2025_selected / full_sales_2025 if full_sales_2025 > 0 else (len(selected_months) / 12.0)
+        if seasonality_ratio_selected == 0:
+            seasonality_ratio_selected = len(selected_months) / 12.0
+            
+        projected_2026_selected = sales_2026_selected / seasonality_ratio_selected if seasonality_ratio_selected > 0 else sales_2026_selected
+        projected_increase_selected = projected_2026_selected - full_sales_2025
+        proj_prefix = "+" if projected_increase_selected >= 0 else ""
+        proj_class = "delta-positive" if projected_increase_selected >= 0 else "delta-negative"
 
         # Display Metric Cards in columns
         col1, col2, col3, col4 = st.columns(4)
@@ -264,28 +260,28 @@ else:
         with col1:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #6366F1;">
-                    <div class="metric-title">ยอดขายปี 2025 (2568) (Full Year)</div>
-                    <div class="metric-value">฿{sales_2025:,.2f}</div>
-                    <div class="metric-delta delta-positive">ปริมาณรวม: {qty_2025:,.0f} ชิ้น (12 เดือน)</div>
+                    <div class="metric-title">ยอดขายปี 2025 (2568) (ช่วงที่เลือก)</div>
+                    <div class="metric-value">฿{sales_2025_selected:,.2f}</div>
+                    <div class="metric-delta delta-positive">ปริมาณรวม: {qty_2025_selected:,.0f} ชิ้น ({len(selected_months)} เดือน)</div>
                 </div>
             """, unsafe_allow_html=True)
             
         with col2:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #10B981;">
-                    <div class="metric-title">ยอดขายสะสม YTD 2026 (2569)</div>
-                    <div class="metric-value">฿{sales_2026:,.2f}</div>
-                    <div class="metric-delta delta-positive">สะสม ม.ค. - มี.ค. (3 เดือน)</div>
+                    <div class="metric-title">ยอดขายสะสมปี 2026 (2569) (ช่วงที่เลือก)</div>
+                    <div class="metric-value">฿{sales_2026_selected:,.2f}</div>
+                    <div class="metric-delta delta-positive">สะสมตามตัวกรองเดือนที่เลือก</div>
                 </div>
             """, unsafe_allow_html=True)
             
         with col3:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #8B5CF6;">
-                    <div class="metric-title">อัตราเติบโตสะสม YTD YoY</div>
-                    <div class="metric-value">{growth_prefix}{q1_yoy_growth:.2f}%</div>
+                    <div class="metric-title">อัตราเติบโตสะสม YoY (ช่วงที่เลือก)</div>
+                    <div class="metric-value">{growth_prefix}{yoy_growth_selected:.2f}%</div>
                     <div class="metric-delta {growth_class}">
-                        {diff_prefix}฿{q1_diff:,.2f} (เทียบกับ YTD 2025)
+                        {diff_prefix}฿{diff_selected:,.2f} (เทียบกับปี 2568 ช่วงเดียวกัน)
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -294,9 +290,9 @@ else:
             st.markdown(f"""
                 <div class="metric-card" style="border-left-color: #F59E0B;">
                     <div class="metric-title">ประมาณการยอดขายปี 2026 (Run-Rate)</div>
-                    <div class="metric-value">฿{projected_2026:,.2f}</div>
+                    <div class="metric-value">฿{projected_2026_selected:,.2f}</div>
                     <div class="metric-delta {proj_class}">
-                        คาดการณ์: {proj_prefix}{projected_increase/sales_2025*100:.1f}% ({proj_prefix}฿{projected_increase:,.2f})
+                        คาดการณ์: {proj_prefix}{projected_increase_selected/max(1, full_sales_2025)*100:.1f}% ({proj_prefix}฿{projected_increase_selected:,.2f})
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -306,10 +302,10 @@ else:
         col_chart_left, col_chart_right = st.columns([3, 2])
         
         with col_chart_left:
-            st.markdown("### 📈 ยอดเปรียบเทียบยอดขายรายเดือน ปี 2025 กับ 2026 (Q1)")
+            st.markdown("### 📈 ยอดเปรียบเทียบยอดขายรายเดือน ปี 2025 กับ 2026")
             
-            # Aggregate monthly sales by year
-            monthly_sales = df[df['MonthNum'].isin([1, 2, 3])].groupby(['Year', 'MonthNum', 'MonthTH'])['NetSales'].sum().reset_index()
+            # Aggregate monthly sales by year (dynamic based on selected months)
+            monthly_sales = df[df['MonthNum'].isin(selected_months)].groupby(['Year', 'MonthNum', 'MonthTH'])['NetSales'].sum().reset_index()
             monthly_sales['YearStr'] = monthly_sales['Year'].astype(str)
             
             chart_yoy = alt.Chart(monthly_sales).mark_bar().encode(
@@ -332,34 +328,129 @@ else:
         with col_chart_right:
             st.markdown("### 🎯 เปรียบเทียบสัดส่วนยอดขายและปริมาณสินค้า")
             
-            # Show summary table for Q1
-            q1_summary = pd.DataFrame({
-                'หัวข้อ': ['ยอดขายรวม Q1', 'จำนวนชิ้นที่ขาย Q1', 'จำนวนบิลที่เปิด Q1'],
-                'ปี 2025\xa0(2568)': [
-                    f"฿{q1_2025_sales:,.2f}", 
-                    f"{df[(df['Year'] == 2025) & (df['MonthNum'].isin([1,2,3]))]['Qty'].sum():,.0f} ชิ้น",
-                    f"{df[(df['Year'] == 2025) & (df['MonthNum'].isin([1,2,3]))]['DocNo'].nunique():,.0f} บิล"
-                ],
-                'ปี 2026\xa0(2569)': [
-                    f"฿{q1_2026_sales:,.2f}",
-                    f"{df[(df['Year'] == 2026) & (df['MonthNum'].isin([1,2,3]))]['Qty'].sum():,.0f} ชิ้น",
-                    f"{df[(df['Year'] == 2026) & (df['MonthNum'].isin([1,2,3]))]['DocNo'].nunique():,.0f} บิล"
-                ]
-            })
+            # Calculate values dynamically based on selected months for the summary table
+            sel_2025_df = df[(df['Year'] == 2025) & (df['MonthNum'].isin(selected_months))]
+            sel_2025_sales = sel_2025_df['NetSales'].sum()
+            sel_2025_qty = sel_2025_df['Qty'].sum()
+            sel_2025_bills = sel_2025_df['DocNo'].nunique()
             
-            st.dataframe(q1_summary, use_container_width=True, hide_index=True)
+            sel_2026_df = df[(df['Year'] == 2026) & (df['MonthNum'].isin(selected_months))]
+            sel_2026_sales = sel_2026_df['NetSales'].sum()
+            sel_2026_qty = sel_2026_df['Qty'].sum()
+            sel_2026_bills = sel_2026_df['DocNo'].nunique()
+            
+            # Create a premium HTML table with larger font sizes for maximum readability
+            html_table = f"""
+            <style>
+                .dynamic-summary-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-family: 'Prompt', sans-serif;
+                    margin-top: 10px;
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                }}
+                .dynamic-summary-table th {{
+                    background-color: #F8FAFC;
+                    color: #475569;
+                    font-size: 16px;
+                    font-weight: 600;
+                    padding: 14px 18px;
+                    border-bottom: 2px solid #E2E8F0;
+                    text-align: left;
+                }}
+                .dynamic-summary-table td {{
+                    padding: 14px 18px;
+                    border-bottom: 1px solid #F1F5F9;
+                    color: #334155;
+                    font-size: 16px;
+                }}
+                .dynamic-summary-table tr:last-child td {{
+                    border-bottom: none;
+                }}
+                .dynamic-summary-table tr:hover {{
+                    background-color: #F8FAFC;
+                }}
+                .val-highlight {{
+                    font-weight: 600;
+                    color: #0F172A;
+                }}
+            </style>
+            <table class="dynamic-summary-table">
+                <thead>
+                    <tr>
+                        <th>หัวข้อ</th>
+                        <th>ปี 2025 (2568)</th>
+                        <th>ปี 2026 (2569)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>ยอดขายรวม</b></td>
+                        <td class="val-highlight">฿{sel_2025_sales:,.2f}</td>
+                        <td class="val-highlight" style="color: #10B981;">฿{sel_2026_sales:,.2f}</td>
+                    </tr>
+                    <tr>
+                        <td><b>จำนวนชิ้นที่ขาย</b></td>
+                        <td>{sel_2025_qty:,.0f} ชิ้น</td>
+                        <td style="color: #10B981; font-weight: 500;">{sel_2026_qty:,.0f} ชิ้น</td>
+                    </tr>
+                    <tr>
+                        <td><b>จำนวนบิลที่เปิด</b></td>
+                        <td>{sel_2025_bills:,.0f} บิล</td>
+                        <td style="color: #10B981; font-weight: 500;">{sel_2026_bills:,.0f} บิล</td>
+                    </tr>
+                </tbody>
+            </table>
+            """
+            st.markdown(html_table, unsafe_allow_html=True)
             
         # 3. Top 5 Customers & Products Section
         st.markdown("<hr>", unsafe_allow_html=True)
-        col_top_cust, col_top_prod = st.columns(2)
         
-        with col_top_cust:
+        # Aggregate top customers data first to handle selection robustly
+        top_cust_df = filtered_df.groupby(['CustomerCode', 'CustomerName'])['NetSales'].sum().reset_index()
+        top_cust_df = top_cust_df.sort_values(by='NetSales', ascending=False).head(5)
+        
+        # Retrieve selection from session state key "cust_table" robustly
+        selected_customer_name = None
+        if "cust_table" in st.session_state:
+            sel_state = st.session_state["cust_table"]
+            selected_rows = []
+            if isinstance(sel_state, dict):
+                selection = sel_state.get("selection", {})
+                if isinstance(selection, dict):
+                    selected_rows = selection.get("rows", [])
+                elif hasattr(selection, "rows"):
+                    selected_rows = selection.rows
+            elif hasattr(sel_state, "selection"):
+                selection = sel_state.selection
+                if isinstance(selection, dict):
+                    selected_rows = selection.get("rows", [])
+                elif hasattr(selection, "rows"):
+                    selected_rows = selection.rows
+            
+            if selected_rows and len(selected_rows) > 0:
+                selected_row_idx = selected_rows[0]
+                if selected_row_idx < len(top_cust_df):
+                    selected_customer_name = top_cust_df.iloc[selected_row_idx]['CustomerName']
+        
+        # Symmetrical Layout separated into rows of columns to ensure perfect alignment
+        # ROW 1: Titles
+        col_title_left, col_title_right = st.columns(2)
+        with col_title_left:
             st.markdown(f"### 👥 Top 5 ลูกค้าที่ทำยอดขายสูงสุด {filter_status_suffix}")
-            
-            # Top 5 customers aggregation
-            top_cust_df = filtered_df.groupby(['CustomerCode', 'CustomerName'])['NetSales'].sum().reset_index()
-            top_cust_df = top_cust_df.sort_values(by='NetSales', ascending=False).head(5)
-            
+        with col_title_right:
+            if selected_customer_name:
+                st.markdown(f"### 📦 สินค้าขายดี 5 อันดับแรกของ '{selected_customer_name}'")
+            else:
+                st.markdown(f"### 📦 Top 5 สินค้าขายดีที่สุด {filter_status_suffix}")
+                
+        # ROW 2: Charts
+        col_chart_left, col_chart_right = st.columns(2)
+        with col_chart_left:
             chart_cust = alt.Chart(top_cust_df).mark_bar(cornerRadiusEnd=4).encode(
                 x=alt.X('NetSales:Q', title='ยอดขายรวม (บาท)'),
                 y=alt.Y('CustomerName:N', sort='-x', title='ชื่อลูกค้า'),
@@ -368,38 +459,12 @@ else:
             
             st.altair_chart(chart_cust, use_container_width=True)
             
-            # Bulletproof Pandas string formatting for perfect rendering of commas and currency
-            display_cust_df = top_cust_df.copy()
-            display_cust_df['ยอดขายรวมสุทธิ'] = display_cust_df['NetSales'].apply(lambda x: f"฿{x:,.2f}")
-            display_cust_df = display_cust_df[['CustomerCode', 'CustomerName', 'ยอดขายรวมสุทธิ']].rename(
-                columns={'CustomerCode': 'รหัสลูกค้า', 'CustomerName': 'ชื่อลูกค้า'}
-            )
-            
-            cust_selection = st.dataframe(
-                display_cust_df,
-                use_container_width=True,
-                hide_index=True,
-                on_select="rerun",
-                selection_mode="single-row"
-            )
-            
-        with col_top_prod:
-            # Check if a customer is selected in the left table
-            selected_customer_name = None
-            if cust_selection and hasattr(cust_selection, "selection") and "rows" in cust_selection.selection and len(cust_selection.selection["rows"]) > 0:
-                selected_row_idx = cust_selection.selection["rows"][0]
-                if selected_row_idx < len(top_cust_df):
-                    selected_customer_name = top_cust_df.iloc[selected_row_idx]['CustomerName']
-            
+        with col_chart_right:
             if selected_customer_name:
-                st.markdown(f"### 📦 สินค้าขายดี 5 อันดับแรกของ '{selected_customer_name}'")
-                # Filter for selected customer
                 cust_filter_df = filtered_df[filtered_df['CustomerName'] == selected_customer_name]
                 top_prod_df = cust_filter_df.groupby(['ProductCode', 'ProductName'])['NetSales'].sum().reset_index()
                 top_prod_df = top_prod_df.sort_values(by='NetSales', ascending=False).head(5)
             else:
-                st.markdown(f"### 📦 Top 5 สินค้าขายดีที่สุด {filter_status_suffix}")
-                # Default: Top 5 products of all customers
                 top_prod_df = filtered_df.groupby(['ProductCode', 'ProductName'])['NetSales'].sum().reset_index()
                 top_prod_df = top_prod_df.sort_values(by='NetSales', ascending=False).head(5)
             
@@ -411,8 +476,29 @@ else:
                 ).properties(height=280)
                 
                 st.altair_chart(chart_prod, use_container_width=True)
+            else:
+                st.info("ไม่มีข้อมูลสินค้าขายดีสำหรับลูกค้ารายนี้ในตัวกรองปัจจุบัน")
                 
-                # Bulletproof Pandas string formatting for perfect rendering of commas and currency
+        # ROW 3: Dataframes (Perfectly Symmetrical & Aligned!)
+        col_table_left, col_table_right = st.columns(2)
+        with col_table_left:
+            display_cust_df = top_cust_df.copy()
+            display_cust_df['ยอดขายรวมสุทธิ'] = display_cust_df['NetSales'].apply(lambda x: f"฿{x:,.2f}")
+            display_cust_df = display_cust_df[['CustomerCode', 'CustomerName', 'ยอดขายรวมสุทธิ']].rename(
+                columns={'CustomerCode': 'รหัสลูกค้า', 'CustomerName': 'ชื่อลูกค้า'}
+            )
+            
+            st.dataframe(
+                display_cust_df,
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single-row",
+                key="cust_table"
+            )
+            
+        with col_table_right:
+            if not top_prod_df.empty:
                 display_prod_df = top_prod_df.copy()
                 display_prod_df['ยอดขายรวมสุทธิ'] = display_prod_df['NetSales'].apply(lambda x: f"฿{x:,.2f}")
                 display_prod_df = display_prod_df[['ProductCode', 'ProductName', 'ยอดขายรวมสุทธิ']].rename(

@@ -3,6 +3,16 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import os
+import base64
+
+# Helper function to load local image as base64
+def get_base64_image(img_path):
+    if os.path.exists(img_path):
+        with open(img_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return None
+
 
 # Set Streamlit Page Configuration
 st.set_page_config(
@@ -207,7 +217,19 @@ else:
     filter_status_suffix = get_filter_status_str(selected_years, selected_months, years, months, month_names)
     
     # ------------------ MAIN HEADER ------------------
-    st.markdown('<div class="main-header">📊 Thai Sin Anan Rubber Factory Sales Domestic Analytics Dashboard</div>', unsafe_allow_html=True)
+    # Load and encode Mitsuba logo to display beautifully alongside the header
+    logo_base64 = get_base64_image("mitsuba_logo.jpg")
+    
+    if logo_base64:
+        st.markdown(f"""
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 5px; flex-wrap: wrap;">
+                <img src="data:image/jpeg;base64,{logo_base64}" style="height: 48px; border-radius: 4px; object-fit: contain;" />
+                <div class="main-header" style="margin: 0; line-height: 1.2;">Thai Sin Anan Rubber Factory Sales Domestic Analytics Dashboard</div>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="main-header">📊 Thai Sin Anan Rubber Factory Sales Domestic Analytics Dashboard</div>', unsafe_allow_html=True)
+        
     st.markdown('<div class="subtitle">ระบบวิเคราะห์ข้อมูลยอดขายสุทธิของลูกค้า สินค้า ราคาต่อหน่วย และยอดเปรียบเทียบปี 2025 กับ 2026</div>', unsafe_allow_html=True)
     
     # Create main Tabs
@@ -302,7 +324,29 @@ else:
         col_chart_left, col_chart_right = st.columns([3, 2])
         
         with col_chart_left:
-            st.markdown("### 📈 ยอดเปรียบเทียบยอดขายรายเดือน ปี 2025 กับ 2026")
+            # Generate dynamic title for the monthly sales chart based on selected years and months
+            if len(selected_years) == 1:
+                y = selected_years[0]
+                y_be = y + 543
+                if len(selected_months) == 12:
+                    months_desc = "ทุกเดือน"
+                elif len(selected_months) <= 3:
+                    months_desc = "เดือน " + ", ".join([month_names[m] for m in sorted(selected_months)])
+                else:
+                    months_desc = f"สะสม {len(selected_months)} เดือน"
+                chart_title_text = f"📈 ยอดเปรียบเทียบยอดขายรายเดือน ปี {y} ({y_be}) ({months_desc})"
+            elif len(selected_years) == 2 and sorted(selected_years) == [2025, 2026]:
+                if len(selected_months) == 12:
+                    months_desc = "ทุกเดือน"
+                elif len(selected_months) <= 3:
+                    months_desc = "เดือน " + ", ".join([month_names[m] for m in sorted(selected_months)])
+                else:
+                    months_desc = f"สะสม {len(selected_months)} เดือน"
+                chart_title_text = f"📈 ยอดเปรียบเทียบยอดขายรายเดือน ปี 2025-2026 ({months_desc})"
+            else:
+                chart_title_text = f"📈 ยอดเปรียบเทียบยอดขายรายเดือน {filter_status_suffix}"
+                
+            st.markdown(f"### {chart_title_text}")
             
             # Aggregate monthly sales by year (dynamic based on selected months)
             monthly_sales = df[df['MonthNum'].isin(selected_months)].groupby(['Year', 'MonthNum', 'MonthTH'])['NetSales'].sum().reset_index()

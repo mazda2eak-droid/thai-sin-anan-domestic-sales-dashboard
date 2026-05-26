@@ -41,6 +41,10 @@ st.markdown("""
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             border-left: 5px solid #4F46E5;
             margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 160px;
         }
         .dark-theme .metric-card {
             background-color: #1F2937;
@@ -326,7 +330,7 @@ else:
             st.altair_chart(chart_yoy, use_container_width=True)
             
         with col_chart_right:
-            st.markdown("### 🎯 สัดส่วนช่องทางและปริมาณสินค้าเปรียบเทียบ")
+            st.markdown("### 🎯 เปรียบเทียบสัดส่วนยอดขายและปริมาณสินค้า")
             
             # Show summary table for Q1
             q1_summary = pd.DataFrame({
@@ -346,20 +350,38 @@ else:
             st.dataframe(q1_summary, use_container_width=True, hide_index=True)
             
             # Executive Budget / Target Tracker
-            st.markdown("### 🎯 Q1 2026 Sales Target / Budget Tracker")
-            budget_amount = 6000000.0  # 6,000,000 THB Budget
-            actual_q1 = q1_2026_sales
-            diff_q1 = actual_q1 - budget_amount
-            pct_reached_q1 = (actual_q1 / budget_amount) * 100
+            st.markdown("### 🎯 2026 Sales Target & Budget Tracker")
+            annual_target = 35000000.0  # 35,000,000 THB Full Year Budget
             
-            # Visual progress bar
-            progress_val = min(1.0, actual_q1 / budget_amount)
+            # Prorated Q1 target based on 2025 seasonality
+            seasonality_ratio = q1_2025_sales / sales_2025 if sales_2025 > 0 else 0.25
+            prorated_q1_target = annual_target * seasonality_ratio
+            
+            actual_q1 = q1_2026_sales
+            diff_q1 = actual_q1 - prorated_q1_target
+            pct_reached_q1 = (actual_q1 / prorated_q1_target) * 100
+            
+            # Full Year projection based on run-rate
+            projected_2026 = actual_q1 / seasonality_ratio if seasonality_ratio > 0 else actual_q1 * 4
+            diff_annual = projected_2026 - annual_target
+            pct_reached_annual = (projected_2026 / annual_target) * 100
+            
+            # Visual progress bar compared to prorated Q1 target
+            progress_val = min(1.0, actual_q1 / prorated_q1_target)
             st.progress(progress_val)
             
             if diff_q1 >= 0:
-                st.success(f"🎉 **Exceeded Q1 Budget of 6,000,000 THB** by **+{pct_reached_q1 - 100:.2f}%** (+฿{diff_q1:,.2f})")
+                st.success(
+                    f"🎉 **On Track to Exceed Annual Target of 35,000,000 THB!**\n\n"
+                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} สูงกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **+{pct_reached_q1 - 100:.2f}%** (+฿{diff_q1:,.2f})\n"
+                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะทะลุเป้าหมายปี 2026 อยู่ **+{pct_reached_annual - 100:.2f}%** (+฿{diff_annual:,.2f})"
+                )
             else:
-                st.warning(f"⚠️ Reached **{pct_reached_q1:.2f}%** of Q1 Budget (**6,000,000 THB**). Short by ฿{abs(diff_q1):,.2f}")
+                st.warning(
+                    f"⚠️ **Below Target Track for Annual Target of 35,000,000 THB**\n\n"
+                    f"* **ยอดขายจริงสะสม Q1**: ฿{actual_q1:,.2f} ต่ำกว่าเป้าหมายเฉลี่ยรายฤดูกาล (฿{prorated_q1_target:,.2f}) อยู่ **{pct_reached_q1:.2f}%** (ขาดอีก ฿{abs(diff_q1):,.2f})\n"
+                    f"* **ประมาณการยอดขายเต็มปี**: ฿{projected_2026:,.2f} คาดว่าจะยังไม่ถึงเป้าหมายปี 2026 (คิดเป็น {pct_reached_annual:.2f}%)"
+                )
             
         # 3. Top 5 Customers & Products Section
         st.markdown("<hr>", unsafe_allow_html=True)
